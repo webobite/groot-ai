@@ -1,0 +1,241 @@
+{
+  "name": "groot-ai",
+  "displayName": "Groot AI",
+  "description": "AI-Powered Code Assistant powered by self-hosted LLM on GKE",
+  "version": "0.1.0",
+  "publisher": "subham-singh",
+  "icon": "resources/groot-icon.png",
+  "engines": {
+    "vscode": "^1.128.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "ai",
+    "code assistant",
+    "llm",
+    "groot",
+    "vllm",
+    "code generation"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "groot-sidebar",
+          "title": "Groot AI",
+          "icon": "resources/groot-sidebar.svg"
+        }
+      ]
+    },
+    "views": {
+      "groot-sidebar": [
+        {
+          "type": "webview",
+          "id": "groot-ai.chatView",
+          "name": "Chat"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "groot-ai.sendMessage",
+        "title": "Groot AI: Send Message",
+        "icon": "$(send)"
+      },
+      {
+        "command": "groot-ai.newChat",
+        "title": "Groot AI: New Chat",
+        "icon": "$(add)"
+      },
+      {
+        "command": "groot-ai.explainCode",
+        "title": "Groot AI: Explain Selected Code"
+      },
+      {
+        "command": "groot-ai.refactorCode",
+        "title": "Groot AI: Refactor Selected Code"
+      },
+      {
+        "command": "groot-ai.generateTests",
+        "title": "Groot AI: Generate Tests for Selected Code"
+      },
+      {
+        "command": "groot-ai.fixErrors",
+        "title": "Groot AI: Fix Errors in Selected Code"
+      },
+      {
+        "command": "groot-ai.startServer",
+        "title": "Groot AI: Start Inference Server",
+        "icon": "$(play)"
+      },
+      {
+        "command": "groot-ai.stopServer",
+        "title": "Groot AI: Stop Inference Server",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "groot-ai.serverStatus",
+        "title": "Groot AI: Check Server Status"
+      },
+      {
+        "command": "groot-ai.toggleInlineCompletion",
+        "title": "Groot AI: Toggle Inline Completions"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "submenu": "groot-ai.contextMenu",
+          "group": "groot"
+        }
+      ],
+      "groot-ai.contextMenu": [
+        {
+          "command": "groot-ai.explainCode",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "groot-ai.refactorCode",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "groot-ai.generateTests",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "groot-ai.fixErrors",
+          "when": "editorHasSelection"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "groot-ai.newChat",
+          "when": "view == groot-ai.chatView",
+          "group": "navigation"
+        }
+      ]
+    },
+    "submenus": [
+      {
+        "id": "groot-ai.contextMenu",
+        "label": "Groot AI"
+      }
+    ],
+    "configuration": {
+      "title": "Groot AI",
+      "properties": {
+        "groot-ai.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "URL of your vLLM inference server (OpenAI-compatible API endpoint)"
+        },
+        "groot-ai.modelName": {
+          "type": "string",
+          "default": "Qwen/Qwen2.5-Coder-7B-Instruct",
+          "description": "Model name as registered on the vLLM server"
+        },
+        "groot-ai.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for authentication (leave empty if not configured)"
+        },
+        "groot-ai.maxTokens": {
+          "type": "number",
+          "default": 2048,
+          "description": "Maximum tokens to generate per response"
+        },
+        "groot-ai.temperature": {
+          "type": "number",
+          "default": 0.1,
+          "description": "Sampling temperature (0.0 = deterministic, 1.0 = creative)"
+        },
+        "groot-ai.inlineCompletionsEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable inline code completions (tab to accept)"
+        },
+        "groot-ai.inlineCompletionDebounceMs": {
+          "type": "number",
+          "default": 500,
+          "description": "Delay in ms before triggering inline completion"
+        },
+        "groot-ai.gke.projectId": {
+          "type": "string",
+          "default": "",
+          "description": "GCP Project ID for server start/stop controls"
+        },
+        "groot-ai.gke.clusterName": {
+          "type": "string",
+          "default": "groot-cluster",
+          "description": "GKE cluster name"
+        },
+        "groot-ai.gke.zone": {
+          "type": "string",
+          "default": "us-central1-a",
+          "description": "GKE cluster zone"
+        },
+        "groot-ai.gke.deploymentName": {
+          "type": "string",
+          "default": "groot-vllm",
+          "description": "Kubernetes deployment name for the inference server"
+        },
+        "groot-ai.gke.namespace": {
+          "type": "string",
+          "default": "groot-inference",
+          "description": "Kubernetes namespace"
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "groot-ai.sendMessage",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "webviewId == 'groot-ai.chatView'"
+      },
+      {
+        "command": "groot-ai.toggleInlineCompletion",
+        "key": "ctrl+shift+g",
+        "mac": "cmd+shift+g"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run package",
+    "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.128.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "24.x",
+    "typescript-eslint": "^8.61.1",
+    "eslint": "^10.5.0",
+    "esbuild": "^0.28.1",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^6.0.3",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.0.0"
+  },
+  "overrides": {
+    "diff": "^8.0.4",
+    "serialize-javascript": "^7.0.6"
+  }
+}

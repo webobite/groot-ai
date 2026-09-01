@@ -1,0 +1,55 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "watch",
+			"dependsOn": [
+				"watch:tsc",
+				"watch:esbuild"
+			],
+			"presentation": {
+				"reveal": "never"
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "watch:esbuild",
+			"type": "shell",
+			"command": "node esbuild.js --watch",
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": {
+				"owner": "esbuild",
+				"fileLocation": ["relative", "${workspaceFolder}"],
+				"pattern": {
+					"regexp": "✘ \\[ERROR\\] (.+)",
+					"message": 1
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "\\[watch\\] build started",
+					"endsPattern": "\\[watch\\] build finished"
+				}
+			},
+			"presentation": {
+				"group": "watch",
+				"reveal": "never"
+			}
+		},
+		{
+			"label": "watch:tsc",
+			"type": "shell",
+			"command": "npx tsc --noEmit --watch --project tsconfig.json",
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": "$tsc-watch",
+			"presentation": {
+				"group": "watch",
+				"reveal": "never"
+			}
+		}
+	]
+}
