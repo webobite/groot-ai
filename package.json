@@ -169,7 +169,7 @@
         },
         "groot-ai.gke.projectId": {
           "type": "string",
-          "default": "",
+          "default": "groot-dev-507402",
           "description": "GCP Project ID for server start/stop controls"
         },
         "groot-ai.gke.clusterName": {

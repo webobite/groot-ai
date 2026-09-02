@@ -3,3 +3,8 @@ dist
 node_modules
 .vscode-test/
 *.vsix
+google-cloud-cli-darwin-arm.tar.gz
+
+# Infrastructure secrets — NEVER commit
+k8s/.env
+k8s/.rendered/
