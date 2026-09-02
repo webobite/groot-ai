@@ -1,0 +1,23 @@
+# service-external.yaml
+# External LoadBalancer Service for vLLM
+# COST: ~$18/month — delete when not demoing
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${GKE_DEPLOYMENT_NAME}-external
+  namespace: ${GKE_NAMESPACE}
+  labels:
+    app: groot
+    component: inference
+    exposure: external
+spec:
+  type: LoadBalancer
+  selector:
+    app: groot
+    component: inference
+  ports:
+    - name: http
+      port: 80
+      targetPort: ${VLLM_PORT}
+      protocol: TCP

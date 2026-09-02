@@ -1,0 +1,21 @@
+# service.yaml
+# Internal ClusterIP Service for vLLM
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${GKE_DEPLOYMENT_NAME}
+  namespace: ${GKE_NAMESPACE}
+  labels:
+    app: groot
+    component: inference
+spec:
+  type: ClusterIP
+  selector:
+    app: groot
+    component: inference
+  ports:
+    - name: http
+      port: 80
+      targetPort: ${VLLM_PORT}
+      protocol: TCP
