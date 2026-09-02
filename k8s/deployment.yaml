@@ -1,0 +1,201 @@
+# deployment.yaml
+# vLLM inference server on GKE with GPU
+#
+# This is a TEMPLATE — deploy with: ./k8s/deploy.sh
+# Variables are substituted from k8s/.env at deploy time.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${GKE_DEPLOYMENT_NAME}
+  namespace: ${GKE_NAMESPACE}
+  labels:
+    app: groot
+    component: inference
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: groot
+      component: inference
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: groot
+        component: inference
+        version: v1
+      annotations:
+        gke-gcsfuse/volumes: "true"
+        gke-gcsfuse/cpu-limit: "500m"
+        gke-gcsfuse/memory-limit: "512Mi"
+        gke-gcsfuse/ephemeral-storage-limit: "20Gi"
+    spec:
+      serviceAccountName: ${K8S_SA_NAME}
+
+      nodeSelector:
+        cloud.google.com/gke-accelerator: ${GPU_TYPE}
+
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Equal
+          value: present
+          effect: NoSchedule
+
+      terminationGracePeriodSeconds: 60
+
+      # ── Init Container: Fetch secrets from Secret Manager ────
+      initContainers:
+        - name: fetch-secrets
+          image: gcr.io/google.com/cloudsdktool/google-cloud-cli:slim
+          command:
+            - sh
+            - -c
+            - |
+              echo "Fetching secrets from Secret Manager..."
+
+              gcloud secrets versions access latest \
+                --secret=${HF_TOKEN_SECRET_NAME} \
+                --project=${GCP_PROJECT_ID} \
+                > /secrets/hf-token
+
+              if [ ! -s /secrets/hf-token ]; then
+                echo "ERROR: Failed to fetch HF token"
+                exit 1
+              fi
+              echo "HF token fetched successfully"
+
+              gcloud secrets versions access latest \
+                --secret=${API_KEY_SECRET_NAME} \
+                --project=${GCP_PROJECT_ID} \
+                > /secrets/api-key
+
+              if [ ! -s /secrets/api-key ]; then
+                echo "ERROR: Failed to fetch API key"
+                exit 1
+              fi
+              echo "API key fetched successfully"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          volumeMounts:
+            - name: hf-secrets
+              mountPath: /secrets
+
+      # ── Main Container: vLLM ─────────────────────────────────
+      containers:
+        - name: vllm
+          image: ${VLLM_IMAGE}
+          command:
+            - sh
+            - -c
+            - |
+              export HF_TOKEN=$(cat /secrets/hf-token)
+              export HUGGING_FACE_HUB_TOKEN=$HF_TOKEN
+              VLLM_API_KEY=$(cat /secrets/api-key)
+
+              echo "Starting vLLM server..."
+              echo "Model: ${VLLM_MODEL}"
+              echo "GPU memory utilization: ${VLLM_GPU_MEMORY_UTIL}"
+              echo "Max context length: ${VLLM_MAX_MODEL_LEN} tokens"
+              echo "API key authentication: ENABLED"
+
+              exec python3 -m vllm.entrypoints.openai.api_server \
+                --model ${VLLM_MODEL} \
+                --host 0.0.0.0 \
+                --port ${VLLM_PORT} \
+                --gpu-memory-utilization ${VLLM_GPU_MEMORY_UTIL} \
+                --max-model-len ${VLLM_MAX_MODEL_LEN} \
+                --tensor-parallel-size ${GPU_COUNT} \
+                --trust-remote-code \
+                --download-dir /local-cache \
+                --dtype ${VLLM_DTYPE} \
+                --max-num-seqs ${VLLM_MAX_NUM_SEQS} \
+                --api-key "$VLLM_API_KEY"
+
+          env:
+            - name: TRANSFORMERS_CACHE
+              value: /local-cache
+            - name: HF_HOME
+              value: /local-cache
+            - name: NCCL_DEBUG
+              value: WARN
+
+          ports:
+            - name: http
+              containerPort: ${VLLM_PORT}
+              protocol: TCP
+
+          resources:
+            requests:
+              cpu: "2"
+              memory: 8Gi
+              nvidia.com/gpu: "${GPU_COUNT}"
+              ephemeral-storage: 20Gi
+            limits:
+              cpu: "4"
+              memory: 16Gi
+              nvidia.com/gpu: "${GPU_COUNT}"
+              ephemeral-storage: 30Gi
+
+          startupProbe:
+            httpGet:
+              path: /health
+              port: ${VLLM_PORT}
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 120
+            timeoutSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: ${VLLM_PORT}
+            periodSeconds: 30
+            failureThreshold: 3
+            timeoutSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: ${VLLM_PORT}
+            periodSeconds: 15
+            failureThreshold: 2
+            timeoutSeconds: 5
+
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: hf-secrets
+              mountPath: /secrets
+              readOnly: true
+            - name: local-cache
+              mountPath: /local-cache
+            - name: model-cache
+              mountPath: /model-cache
+
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi
+        - name: hf-secrets
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+        - name: local-cache
+          emptyDir:
+            sizeLimit: 20Gi
+        - name: model-cache
+          csi:
+            driver: gcsfuse.csi.storage.gke.io
+            volumeAttributes:
+              bucketName: ${GCS_MODEL_CACHE_BUCKET}
+              mountOptions: "implicit-dirs"
+              fileCacheCapacity: "15Gi"
