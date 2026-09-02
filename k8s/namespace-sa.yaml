@@ -1,0 +1,24 @@
+# namespace-sa.yaml
+# Foundation: Namespace isolation + Workload Identity binding
+# Apply FIRST — everything else depends on this namespace and service account.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${GKE_NAMESPACE}
+  labels:
+    app: groot
+    component: inference
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ${K8S_SA_NAME}
+  namespace: ${GKE_NAMESPACE}
+  labels:
+    app: groot
+    component: inference
+  annotations:
+    iam.gke.io/gcp-service-account: ${GCP_SA_EMAIL}
