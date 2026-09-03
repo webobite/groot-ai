@@ -3,7 +3,27 @@
   "displayName": "Groot AI",
   "description": "AI-Powered Code Assistant powered by self-hosted LLM on GKE",
   "version": "0.1.0",
-  "publisher": "subham-singh",
+  "publisher": "webobite",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webobite/groot-ai"
+  },
+  "homepage": "https://github.com/webobite/groot-ai#readme",
+  "bugs": {
+    "url": "https://github.com/webobite/groot-ai/issues"
+  },
+  "galleryBanner": {
+    "color": "#1a1a2e",
+    "theme": "dark"
+  },
+  "badges": [
+    {
+      "url": "https://img.shields.io/github/license/webobite/groot-ai",
+      "href": "https://github.com/webobite/groot-ai/blob/main/LICENSE",
+      "description": "License"
+    }
+  ],
   "icon": "resources/groot-icon.png",
   "engines": {
     "vscode": "^1.128.0"
